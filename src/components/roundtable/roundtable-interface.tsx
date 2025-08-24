@@ -193,7 +193,7 @@ export function RoundtableInterface() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Crown className="w-5 h-5 text-auburn-orange" />
+                  <Crown className="w-5 h-5 text-accent" />
                   <span>Session Control</span>
                 </CardTitle>
               </CardHeader>
@@ -258,7 +258,7 @@ export function RoundtableInterface() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Users className="w-5 h-5 text-auburn-orange" />
+                  <Users className="w-5 h-5 text-accent" />
                   <span>Participants</span>
                 </CardTitle>
               </CardHeader>

@@ -59,7 +59,7 @@ export function ConversationDisplay({
       <CardHeader className="flex-shrink-0 border-b">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center space-x-2">
-            <MessageCircle className="w-5 h-5 text-auburn-orange" />
+            <MessageCircle className="w-5 h-5 text-accent" />
             <span>Conversation</span>
             {session && (
               <Badge variant="outline" className="ml-2">

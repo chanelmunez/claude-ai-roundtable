@@ -118,7 +118,7 @@ export function TopicIntroductionPanel({
     <Card className={`${className}`}>
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
-          <Lightbulb className="w-6 h-6 text-auburn-orange" />
+          <Lightbulb className="w-6 h-6 text-accent" />
           <span>Start a New Roundtable Discussion</span>
         </CardTitle>
         <p className="text-sm text-muted-foreground">
@@ -145,7 +145,7 @@ export function TopicIntroductionPanel({
                 <Badge
                   key={index}
                   variant="outline"
-                  className="cursor-pointer hover:bg-auburn-orange/10 text-xs px-2 py-1"
+                  className="cursor-pointer hover:bg-accent/10 text-xs px-2 py-1"
                   onClick={() => handleTopicTemplate(template)}
                 >
                   {template.length > 50 ? `${template.slice(0, 50)}...` : template}
@@ -168,15 +168,15 @@ export function TopicIntroductionPanel({
                 className={`
                   cursor-pointer rounded-lg border-2 p-3 transition-all
                   ${selectedMode === mode 
-                    ? 'border-auburn-orange bg-auburn-orange/10' 
-                    : 'border-border hover:border-auburn-orange/50'
+                    ? 'border-accent bg-accent/10' 
+                    : 'border-border hover:border-accent/50'
                   }
                 `}
               >
                 <div className="flex items-start space-x-2">
                   <div 
                     className="w-5 h-5 mt-0.5"
-                    style={{ color: selectedMode === mode ? '#E87722' : color }}
+                    style={{ color: selectedMode === mode ? '#f5a442' : color }}
                   >
                     <Icon className="w-full h-full" />
                   </div>
@@ -214,8 +214,8 @@ export function TopicIntroductionPanel({
                       className={`
                         cursor-pointer rounded-lg border-2 p-3 transition-all
                         ${selectedAIs.includes(ai.id) || selectedAIs.length === 0
-                          ? 'border-auburn-orange bg-auburn-orange/10' 
-                          : 'border-border hover:border-auburn-orange/50'
+                          ? 'border-accent bg-accent/10' 
+                          : 'border-border hover:border-accent/50'
                         }
                       `}
                       style={{
@@ -252,7 +252,7 @@ export function TopicIntroductionPanel({
           <Button
             onClick={handleStartConversation}
             disabled={!topic.trim() || isLoading}
-            className="w-full bg-auburn-orange hover:bg-auburn-orange/90 text-white"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
             size="lg"
           >
             {isLoading ? (
