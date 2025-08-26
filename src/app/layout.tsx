@@ -20,6 +20,9 @@ export const metadata: Metadata = {
     description: "Dynamic AI conversations with multiple models",
     type: "website",
   },
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
