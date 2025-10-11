@@ -17,36 +17,44 @@ export class AIOrchestrator {
 
   private initializeProviders() {
     // Initialize OpenAI providers
-    AI_PROVIDERS.openai.models.forEach((model, index) => {
-      const persona = AI_PROVIDERS.openai.personas[index];
-      const key = AI_PROVIDERS.openai.keys[Math.floor(Math.random() * AI_PROVIDERS.openai.keys.length)];
-      const aiModelId = `${model}-${persona.toLowerCase().replace(/\s+/g, '-')}`;
-      this.providers.set(aiModelId, new OpenAIProvider(key, model));
-    });
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (openaiKey) {
+      AI_PROVIDERS.openai.models.forEach((model, index) => {
+        const persona = AI_PROVIDERS.openai.personas[index];
+        const aiModelId = `${model}-${persona.toLowerCase().replace(/\s+/g, '-')}`;
+        this.providers.set(aiModelId, new OpenAIProvider(openaiKey, model));
+      });
+    }
 
     // Initialize Anthropic providers
-    AI_PROVIDERS.anthropic.models.forEach((model, index) => {
-      const persona = AI_PROVIDERS.anthropic.personas[index];
-      const key = AI_PROVIDERS.anthropic.keys[Math.floor(Math.random() * AI_PROVIDERS.anthropic.keys.length)];
-      const aiModelId = `${model}-${persona.toLowerCase().replace(/\s+/g, '-')}`;
-      this.providers.set(aiModelId, new AnthropicProvider(key, model));
-    });
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (anthropicKey) {
+      AI_PROVIDERS.anthropic.models.forEach((model, index) => {
+        const persona = AI_PROVIDERS.anthropic.personas[index];
+        const aiModelId = `${model}-${persona.toLowerCase().replace(/\s+/g, '-')}`;
+        this.providers.set(aiModelId, new AnthropicProvider(anthropicKey, model));
+      });
+    }
 
     // Initialize Gemini providers
-    AI_PROVIDERS.gemini.models.forEach((model, index) => {
-      const persona = AI_PROVIDERS.gemini.personas[index];
-      const key = AI_PROVIDERS.gemini.keys[Math.floor(Math.random() * AI_PROVIDERS.gemini.keys.length)];
-      const aiModelId = `${model}-${persona.toLowerCase().replace(/\s+/g, '-')}`;
-      this.providers.set(aiModelId, new GeminiProvider(key, model));
-    });
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey) {
+      AI_PROVIDERS.gemini.models.forEach((model, index) => {
+        const persona = AI_PROVIDERS.gemini.personas[index];
+        const aiModelId = `${model}-${persona.toLowerCase().replace(/\s+/g, '-')}`;
+        this.providers.set(aiModelId, new GeminiProvider(geminiKey, model));
+      });
+    }
 
     // Initialize Groq providers
-    AI_PROVIDERS.groq.models.forEach((model, index) => {
-      const persona = AI_PROVIDERS.groq.personas[index];
-      const key = AI_PROVIDERS.groq.keys[0];
-      const aiModelId = `${model}-${persona.toLowerCase().replace(/\s+/g, '-')}`;
-      this.providers.set(aiModelId, new GroqProvider(key, model));
-    });
+    const groqKey = process.env.GROQ_API_KEY;
+    if (groqKey) {
+      AI_PROVIDERS.groq.models.forEach((model, index) => {
+        const persona = AI_PROVIDERS.groq.personas[index];
+        const aiModelId = `${model}-${persona.toLowerCase().replace(/\s+/g, '-')}`;
+        this.providers.set(aiModelId, new GroqProvider(groqKey, model));
+      });
+    }
   }
 
   selectNextAI(availableAIs: AIModel[]): AIModel | null {
