@@ -56,8 +56,6 @@ export interface ConversationState {
 export const AI_PROVIDERS = {
   openai: {
     keys: [
-      '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',
-      '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'
     ],
     models: ['gpt-4', 'gpt-3.5-turbo'],
     personas: ['Creative Thinker', 'Analytical Mind'],
@@ -65,8 +63,6 @@ export const AI_PROVIDERS = {
   },
   anthropic: {
     keys: [
-      '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',
-      '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'
     ],
     models: ['claude-3-opus', 'claude-3-sonnet'],
     personas: ['Philosophical Guide', 'Pragmatic Advisor'],
@@ -74,33 +70,31 @@ export const AI_PROVIDERS = {
   },
   gemini: {
     keys: [
-      'AIzaSyBW0uN-YOX2Aonfmx_wtB4l1teh-BATYoI',
-      'AIzaSyAdpkSBK5FOtkdtSNQ-w8dsv9g49j1HkPc'
     ],
     models: ['gemini-pro'],
     personas: ['Curious Explorer', 'Detail Seeker'],
     colors: ['#F59E0B', '#EF4444']
   },
   groq: {
-    keys: ['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'],
+    keys: [],
     models: ['mixtral-8x7b', 'llama2-70b'],
     personas: ['Swift Responder', 'Logic Engine'],
     colors: ['#06B6D4', '#84CC16']
   },
   llama: {
-    keys: ['LA-4de8d97d8a274ab78e910e005464a50e9a61c95222684e6caebb410ebecb6ef6'],
+    keys: [],
     models: ['llama-2-70b'],
     personas: ['Open Mind'],
     colors: ['#F97316']
   },
   huggingface: {
-    keys: ['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'],
+    keys: [],
     models: ['microsoft/DialoGPT-large'],
     personas: ['Community Voice'],
     colors: ['#FBBF24']
   },
   mistral: {
-    keys: ['o4jcAoz5ftRUWB1jOmhxiRa5CvQJLTSX'],
+    keys: [],
     models: ['mistral-large'],
     personas: ['European Perspective'],
     colors: ['#A855F7']
