@@ -55,22 +55,19 @@ export interface ConversationState {
 
 export const AI_PROVIDERS = {
   openai: {
-    keys: [
-    ],
+    keys: [],
     models: ['gpt-4', 'gpt-3.5-turbo'],
     personas: ['Creative Thinker', 'Analytical Mind'],
     colors: ['#10B981', '#3B82F6']
   },
   anthropic: {
-    keys: [
-    ],
+    keys: [],
     models: ['claude-3-opus', 'claude-3-sonnet'],
     personas: ['Philosophical Guide', 'Pragmatic Advisor'],
     colors: ['#8B5CF6', '#EC4899']
   },
   gemini: {
-    keys: [
-    ],
+    keys: [],
     models: ['gemini-pro'],
     personas: ['Curious Explorer', 'Detail Seeker'],
     colors: ['#F59E0B', '#EF4444']
