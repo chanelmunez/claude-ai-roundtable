@@ -46,17 +46,6 @@ cp .env.example .env.local
 ```
 
 Edit `.env.local` with your AI API keys:
-```env
-# AI API Keys
-OPENAI_API_KEY_1=your-openai-key-1
-OPENAI_API_KEY_2=your-openai-key-2
-ANTHROPIC_API_KEY_1=your-anthropic-key-1
-ANTHROPIC_API_KEY_2=your-anthropic-key-2
-GEMINI_API_KEY_1=your-gemini-key-1
-GEMINI_API_KEY_2=your-gemini-key-2
-GROQ_API_KEY=your-groq-key
-# ... other keys
-```
 
 3. **Start Development Server**
 ```bash
@@ -110,6 +99,43 @@ The platform supports multiple AI providers with unique personas:
 
 ### Real-time Updates
 - `GET /api/sse/[sessionId]` - Server-Sent Events stream
+
+## 🗄️ Supabase Persistence Setup
+
+Sessions, participants, and transcripts are stored in Supabase Postgres. Create the tables below inside your project (SQL editor → Run):
+
+```sql
+create table public.sessions (
+  id uuid primary key,
+  topic text not null,
+  mode text not null,
+  status text not null default 'active',
+  created_at timestamptz not null,
+  last_activity timestamptz not null
+);
+
+create table public.session_participants (
+  session_id uuid references public.sessions(id) on delete cascade,
+  ai_model_id text not null,
+  provider text not null,
+  name text not null,
+  persona text not null,
+  color text not null,
+  is_active boolean not null default true,
+  primary key (session_id, ai_model_id)
+);
+
+create table public.messages (
+  id uuid primary key,
+  session_id uuid references public.sessions(id) on delete cascade,
+  ai_model_id text not null,
+  content text not null,
+  timestamp timestamptz not null,
+  response_time integer
+);
+```
+
+> 💡 Enable Row Level Security and add policies tailored to your auth model. The Next.js API routes use `SUPABASE_SERVICE_ROLE_KEY` on the server, so never expose that key to the browser.
 
 ## 🚀 Deployment
 
