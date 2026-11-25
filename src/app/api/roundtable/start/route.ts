@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AIOrchestrator } from '@/lib/ai/orchestrator';
 import type { ConversationMode } from '@/lib/types';
+import { createSession as createSessionRecord } from '@/lib/database/session-repository';
 
 const orchestrator = new AIOrchestrator();
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,16 +34,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create session
-    const session = {
-      id: crypto.randomUUID(),
+    // Persist the session
+    const session = await createSessionRecord({
       topic,
       mode: mode as ConversationMode,
-      messages: [],
-      participants,
-      createdAt: new Date(),
-      lastActivity: new Date()
-    };
+      participants
+    });
 
     return NextResponse.json({
       session,

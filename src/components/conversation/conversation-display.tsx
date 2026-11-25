@@ -7,7 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageCircle, Users, Clock } from 'lucide-react';
-import type { Message, AIModel, Session } from '@/lib/types';
+import type { Message, AIModel, Session, SessionStatus } from '@/lib/types';
+
+const STATUS_BADGES: Record<SessionStatus, string> = {
+  active: 'border-emerald-200 text-emerald-700',
+  paused: 'border-amber-200 text-amber-700',
+  completed: 'border-blue-200 text-blue-700',
+  archived: 'border-slate-200 text-slate-600'
+};
 
 interface ConversationDisplayProps {
   session: Session | null;
@@ -64,6 +71,14 @@ export function ConversationDisplay({
             {session && (
               <Badge variant="outline" className="ml-2">
                 {session.mode.toUpperCase()}
+              </Badge>
+            )}
+            {session && (
+              <Badge
+                variant="outline"
+                className={`ml-2 text-xs ${STATUS_BADGES[session.status]}`}
+              >
+                {session.status.toUpperCase()}
               </Badge>
             )}
           </CardTitle>

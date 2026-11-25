@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AIOrchestrator } from '@/lib/ai/orchestrator';
 import { ContextManager } from '@/lib/ai/context-manager';
 import type { ConversationMode } from '@/lib/types';
+import { saveMessage } from '@/lib/database/session-repository';
 
 const orchestrator = new AIOrchestrator();
 const contextManager = new ContextManager();
@@ -12,11 +13,11 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { aiModelId, messages, topic, mode } = body;
+    const { aiModelId, messages, topic, mode, sessionId } = body;
 
-    if (!aiModelId || !topic || !mode) {
+    if (!aiModelId || !topic || !mode || !sessionId) {
       return NextResponse.json(
-        { error: 'Missing required fields: aiModelId, topic, mode' },
+        { error: 'Missing required fields: sessionId, aiModelId, topic, mode' },
         { status: 400 }
       );
     }
@@ -36,7 +37,18 @@ export async function POST(request: NextRequest) {
       mode as ConversationMode
     );
 
-    return NextResponse.json(response);
+    const persisted = await saveMessage({
+      sessionId,
+      aiModelId,
+      content: response.content,
+      responseTime: response.responseTime
+    });
+
+    return NextResponse.json({
+      ...response,
+      messageId: persisted.id,
+      timestamp: persisted.timestamp.toISOString()
+    });
   } catch (error) {
     console.error('AI generation error:', error);
     

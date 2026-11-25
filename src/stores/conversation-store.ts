@@ -1,17 +1,19 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import type { ConversationState, Session, Message, AIModel, ConversationMode } from '@/lib/types';
+import type { ConversationState, Session, Message, AIModel, SessionStatus } from '@/lib/types';
 
 interface ConversationStore extends ConversationState {
   // Actions
-  createSession: (topic: string, mode: ConversationMode, participants: AIModel[]) => void;
+  setSession: (session: Session) => void;
   addMessage: (message: Message) => void;
   setCurrentTurn: (aiModelId: string | null) => void;
   markAIAsUsed: (aiModelId: string) => void;
   resetUsedAIs: () => void;
   incrementRound: () => void;
   updateAIStatus: (aiModelId: string, updates: Partial<Pick<AIModel, 'isActive' | 'isTyping'>>) => void;
+  updateSessionStatus: (status: SessionStatus) => void;
   endSession: () => void;
+  clearSession: () => void;
 }
 
 export const useConversationStore = create<ConversationStore>()(
@@ -26,20 +28,10 @@ export const useConversationStore = create<ConversationStore>()(
         conversationRounds: 0,
 
         // Actions
-        createSession: (topic, mode, participants) => {
-          const session: Session = {
-            id: crypto.randomUUID(),
-            topic,
-            mode,
-            messages: [],
-            participants,
-            createdAt: new Date(),
-            lastActivity: new Date()
-          };
-
+        setSession: (session) => {
           set({
             currentSession: session,
-            isActive: true,
+            isActive: session.status === 'active',
             currentTurn: null,
             usedAIsThisRound: new Set(),
             conversationRounds: 0
@@ -101,7 +93,29 @@ export const useConversationStore = create<ConversationStore>()(
           set({ currentSession: updatedSession });
         },
 
+        updateSessionStatus: (status) => {
+          const state = get();
+          if (!state.currentSession) return;
+
+          set({
+            currentSession: {
+              ...state.currentSession,
+              status
+            },
+            isActive: status === 'active'
+          });
+        },
+
         endSession: () => {
+          set({
+            isActive: false,
+            currentTurn: null,
+            usedAIsThisRound: new Set(),
+            conversationRounds: 0
+          });
+        },
+
+        clearSession: () => {
           set({
             currentSession: null,
             isActive: false,

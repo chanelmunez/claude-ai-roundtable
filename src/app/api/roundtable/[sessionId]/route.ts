@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TurnManager } from '@/lib/ai/turn-manager';
+import { deleteSession, getSession, updateSessionStatus } from '@/lib/database/session-repository';
+import type { SessionStatus } from '@/lib/types';
 
-const turnManager = new TurnManager();
-
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function GET(
   request: NextRequest,
@@ -11,15 +10,16 @@ export async function GET(
 ) {
   try {
     const { sessionId } = await params;
-    // In a real app, you'd fetch from database
-    // For now, return session state information
-    const turnInfo = turnManager.getCurrentRoundInfo();
-    
-    return NextResponse.json({
-      sessionId,
-      turnInfo,
-      status: 'active'
-    });
+    const session = await getSession(sessionId);
+
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Session not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ session });
   } catch (error) {
     console.error('Error getting session:', error);
     return NextResponse.json(
@@ -34,25 +34,22 @@ export async function PUT(
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
+    const { sessionId } = await params;
     const body = await request.json();
     const { action, data } = body;
 
     switch (action) {
-      case 'add_message':
-        // Handle adding a new message
-        if (data.aiModelId) {
-          turnManager.markAIAsUsed(data.aiModelId);
-        }
-        break;
-        
-      case 'reset_round':
-        turnManager.resetRound();
-        break;
-        
       case 'end_session':
-        turnManager.reset();
+        await updateSessionStatus(sessionId, 'completed');
         break;
-        
+      case 'archive_session':
+        await updateSessionStatus(sessionId, 'archived');
+        break;
+      case 'update_status': {
+        const nextStatus = (data?.status ?? 'completed') as SessionStatus;
+        await updateSessionStatus(sessionId, nextStatus);
+        break;
+      }
       default:
         return NextResponse.json(
           { error: 'Invalid action' },
@@ -60,9 +57,11 @@ export async function PUT(
         );
     }
 
+    const session = await getSession(sessionId);
+
     return NextResponse.json({
       success: true,
-      turnInfo: turnManager.getCurrentRoundInfo()
+      session
     });
   } catch (error) {
     console.error('Error updating session:', error);
@@ -79,9 +78,8 @@ export async function DELETE(
 ) {
   try {
     const { sessionId } = await params;
-    // Reset turn manager
-    turnManager.reset();
-    
+    await deleteSession(sessionId);
+
     return NextResponse.json({
       success: true,
       message: `Session ${sessionId} deleted successfully`

@@ -117,8 +117,8 @@ export class AIOrchestrator {
   ): Promise<AIResponse> {
     // Find a fallback AI model from the specified provider
     const fallbackAIs = Array.from(this.providers.entries())
-      .filter(([id, provider]) => provider.provider === fallbackProvider)
-      .map(([id]) => id);
+      .filter(([, provider]) => provider.provider === fallbackProvider)
+      .map(([aiId]) => aiId);
 
     if (fallbackAIs.length === 0) {
       throw new AIProviderError(`No fallback provider available: ${fallbackProvider}`, fallbackProvider, false);
@@ -166,7 +166,6 @@ export class AIOrchestrator {
   }
 
   private extractPersona(aiModelId: string, provider: AIProvider): string {
-    const providerConfig = AI_PROVIDERS[provider];
     const parts = aiModelId.split('-');
     
     switch (provider) {

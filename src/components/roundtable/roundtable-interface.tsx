@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TopicIntroductionPanel } from './topic-introduction-panel';
 import { AIPersonaCard } from '@/components/ai-personas/ai-persona-card';
 import { ConversationDisplay } from '@/components/conversation/conversation-display';
+import { TopicBoard } from '@/components/roundtable/topic-board';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,19 +19,39 @@ import {
   Crown
 } from 'lucide-react';
 import { useConversationStore } from '@/stores/conversation-store';
-import type { ConversationMode, AIModel, Message } from '@/lib/types';
+import type { ConversationMode, AIModel, Message, Session, SessionSummary } from '@/lib/types';
+
+const deserializeSession = (session: Session): Session => ({
+  ...session,
+  createdAt: new Date(session.createdAt),
+  lastActivity: new Date(session.lastActivity),
+  messages: session.messages.map((message) => ({
+    ...message,
+    timestamp: new Date(message.timestamp)
+  }))
+});
+
+const deserializeSummary = (summary: SessionSummary): SessionSummary => ({
+  ...summary,
+  createdAt: new Date(summary.createdAt),
+  lastActivity: new Date(summary.lastActivity)
+});
 
 export function RoundtableInterface() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentTurnAI, setCurrentTurnAI] = useState<string | null>(null);
   
+  const queryClient = useQueryClient();
+
   const {
     currentSession,
     isActive,
-    createSession,
+    setSession,
     addMessage,
     updateAIStatus,
-    endSession
+    updateSessionStatus,
+    endSession,
+    clearSession
   } = useConversationStore();
 
   // Fetch available AIs
@@ -41,6 +62,38 @@ export function RoundtableInterface() {
       if (!response.ok) throw new Error('Failed to fetch AIs');
       const data = await response.json();
       return data.ais as AIModel[];
+    }
+  });
+
+  // Fetch saved sessions from the backend
+  const {
+    data: storedSessions = [],
+    isLoading: sessionsLoading,
+    refetch: refetchSessions
+  } = useQuery({
+    queryKey: ['roundtable-sessions'],
+    queryFn: async () => {
+      const response = await fetch('/api/roundtable/sessions', {
+        cache: 'no-store'
+      });
+      if (!response.ok) throw new Error('Failed to load saved sessions');
+      const data = await response.json();
+      return (data.sessions as SessionSummary[]).map(deserializeSummary);
+    },
+    refetchInterval: 15000
+  });
+
+  const loadSessionMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const response = await fetch(`/api/roundtable/${sessionId}`);
+      if (!response.ok) throw new Error('Failed to load session');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      const hydratedSession = deserializeSession(data.session);
+      setSession(hydratedSession);
+      setIsGenerating(false);
+      setCurrentTurnAI(null);
     }
   });
 
@@ -60,7 +113,9 @@ export function RoundtableInterface() {
       return response.json();
     },
     onSuccess: (data) => {
-      createSession(data.session.topic, data.session.mode, data.participants);
+      const hydratedSession = deserializeSession(data.session);
+      setSession(hydratedSession);
+      queryClient.invalidateQueries({ queryKey: ['roundtable-sessions'] });
       // Start the conversation by selecting first AI
       setTimeout(() => {
         generateNextResponse();
@@ -70,16 +125,17 @@ export function RoundtableInterface() {
 
   // Generate AI response mutation
   const generateResponseMutation = useMutation({
-    mutationFn: async ({ aiModelId, messages, topic, mode }: {
+    mutationFn: async ({ aiModelId, messages, topic, mode, sessionId }: {
       aiModelId: string;
       messages: Message[];
       topic: string;
       mode: ConversationMode;
+      sessionId: string;
     }) => {
       const response = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ aiModelId, messages, topic, mode })
+        body: JSON.stringify({ aiModelId, messages, topic, mode, sessionId })
       });
       if (!response.ok) throw new Error('Failed to generate response');
       return response.json();
@@ -87,10 +143,10 @@ export function RoundtableInterface() {
     onSuccess: (response) => {
       // Add the new message
       const message: Message = {
-        id: crypto.randomUUID(),
+        id: response.messageId || crypto.randomUUID(),
         content: response.content,
         aiModelId: response.aiModelId,
-        timestamp: new Date(),
+        timestamp: response.timestamp ? new Date(response.timestamp) : new Date(),
         responseTime: response.responseTime
       };
       
@@ -98,6 +154,8 @@ export function RoundtableInterface() {
       updateAIStatus(response.aiModelId, { isTyping: false });
       setCurrentTurnAI(null);
       
+      queryClient.invalidateQueries({ queryKey: ['roundtable-sessions'] });
+
       // Continue conversation after a brief pause
       setTimeout(() => {
         generateNextResponse();
@@ -114,7 +172,7 @@ export function RoundtableInterface() {
   });
 
   const generateNextResponse = () => {
-    if (!currentSession || !isActive) return;
+    if (!currentSession || !isActive || currentSession.status !== 'active') return;
 
     // Simple round-robin selection for now
     const activeParticipants = currentSession.participants.filter(ai => ai.isActive);
@@ -136,7 +194,8 @@ export function RoundtableInterface() {
       aiModelId: nextAI.id,
       messages: currentSession.messages,
       topic: currentSession.topic,
-      mode: currentSession.mode
+      mode: currentSession.mode,
+      sessionId: currentSession.id
     });
   };
 
@@ -144,10 +203,80 @@ export function RoundtableInterface() {
     startConversationMutation.mutate({ topic, mode, selectedAIs });
   };
 
-  const handleEndConversation = () => {
+  const handleEndConversation = async () => {
+    if (currentSession) {
+      try {
+        await fetch(`/api/roundtable/${currentSession.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'end_session' })
+        });
+        updateSessionStatus('completed');
+        queryClient.invalidateQueries({ queryKey: ['roundtable-sessions'] });
+      } catch (error) {
+        console.error('Failed to end session', error);
+      }
+    }
+
     endSession();
     setCurrentTurnAI(null);
     setIsGenerating(false);
+  };
+
+  const handleResumeSession = async () => {
+    if (!currentSession) return;
+    try {
+      await fetch(`/api/roundtable/${currentSession.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_status',
+          data: { status: 'active' }
+        })
+      });
+      updateSessionStatus('active');
+      setIsGenerating(false);
+      setTimeout(() => generateNextResponse(), 500);
+      queryClient.invalidateQueries({ queryKey: ['roundtable-sessions'] });
+    } catch (error) {
+      console.error('Failed to resume session', error);
+    }
+  };
+
+  const handleSelectSession = (sessionId: string) => {
+    loadSessionMutation.mutate(sessionId);
+  };
+
+  const handleArchiveSession = async (sessionId: string) => {
+    try {
+      await fetch(`/api/roundtable/${sessionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'archive_session' })
+      });
+      if (currentSession?.id === sessionId) {
+        updateSessionStatus('archived');
+        endSession();
+        setIsGenerating(false);
+      }
+      queryClient.invalidateQueries({ queryKey: ['roundtable-sessions'] });
+    } catch (error) {
+      console.error('Failed to archive session', error);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      await fetch(`/api/roundtable/${sessionId}`, { method: 'DELETE' });
+      if (currentSession?.id === sessionId) {
+        clearSession();
+        setIsGenerating(false);
+        setCurrentTurnAI(null);
+      }
+      queryClient.invalidateQueries({ queryKey: ['roundtable-sessions'] });
+    } catch (error) {
+      console.error('Failed to delete session', error);
+    }
   };
 
   const handlePauseResume = () => {
@@ -183,13 +312,14 @@ export function RoundtableInterface() {
         
         {/* Left Column - Topic & Control Panel */}
         <div className="lg:sticky lg:top-4 lg:h-fit lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto space-y-4 pb-4">
-          {!currentSession ? (
-            <TopicIntroductionPanel
-              onStartConversation={handleStartConversation}
-              availableAIs={availableAIs}
-              isLoading={startConversationMutation.isPending}
-            />
-          ) : (
+          <TopicIntroductionPanel
+            onStartConversation={handleStartConversation}
+            availableAIs={availableAIs}
+            isLoading={startConversationMutation.isPending}
+            className="shadow-sm"
+          />
+
+          {currentSession && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -203,8 +333,11 @@ export function RoundtableInterface() {
                   <p className="text-sm text-muted-foreground">{currentSession.topic}</p>
                 </div>
                 
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">{currentSession.mode.toUpperCase()}</Badge>
+                  <Badge variant="outline" className={`text-xs ${currentSession.status === 'active' ? 'border-emerald-300 text-emerald-600' : 'border-slate-300 text-slate-600'}`}>
+                    {currentSession.status.toUpperCase()}
+                  </Badge>
                   <Badge variant="outline">
                     {conversationStats?.activeParticipants}/{conversationStats?.participants} Active
                   </Badge>
@@ -213,19 +346,19 @@ export function RoundtableInterface() {
                 {conversationStats && (
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span>Progress</span>
+                      <span>Message progress</span>
                       <span>{conversationStats.totalMessages}/20 messages</span>
                     </div>
                     <Progress value={conversationStats.progress} className="h-2" />
                   </div>
                 )}
 
-                <div className="flex space-x-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     onClick={handlePauseResume}
                     variant="outline"
                     className="flex-1"
-                    disabled={generateResponseMutation.isPending}
+                    disabled={!isActive || currentSession.status !== 'active'}
                   >
                     {isGenerating ? (
                       <>
@@ -248,10 +381,33 @@ export function RoundtableInterface() {
                     <Square className="w-4 h-4 mr-2" />
                     End
                   </Button>
+
+                  {currentSession.status !== 'active' && (
+                    <Button
+                      className="flex-1"
+                      variant="secondary"
+                      onClick={handleResumeSession}
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      Reopen Topic
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
           )}
+
+          <TopicBoard
+            sessions={storedSessions}
+            isLoading={sessionsLoading}
+            onSelectSession={handleSelectSession}
+            onArchiveSession={handleArchiveSession}
+            onDeleteSession={handleDeleteSession}
+            onRefresh={() => {
+              void refetchSessions();
+            }}
+            activeSessionId={currentSession?.id}
+          />
 
           {/* AI Participants Grid */}
           {currentSession && (

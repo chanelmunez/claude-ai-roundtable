@@ -28,14 +28,27 @@ export interface ConversationContext {
   participatingAIs: string[];
 }
 
+export type SessionStatus = 'active' | 'paused' | 'completed' | 'archived';
+
 export interface Session {
   id: string;
   topic: string;
   mode: ConversationMode;
+  status: SessionStatus;
   messages: Message[];
   participants: AIModel[];
   createdAt: Date;
   lastActivity: Date;
+}
+
+export interface SessionSummary {
+  id: string;
+  topic: string;
+  mode: ConversationMode;
+  status: SessionStatus;
+  createdAt: Date;
+  lastActivity: Date;
+  messageCount: number;
 }
 
 export interface AIResponse {
@@ -43,6 +56,8 @@ export interface AIResponse {
   aiModelId: string;
   responseTime: number;
   tokens?: number;
+  messageId?: string;
+  timestamp?: string;
 }
 
 export interface ConversationState {
